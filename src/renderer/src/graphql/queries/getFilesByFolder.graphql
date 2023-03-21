@@ -1,0 +1,9 @@
+query getFilesByFolder($folderID: String!) {
+  getFilesByFolder(folderID: $folderID) {
+    ID
+    name
+    url
+    fileType
+    isTrash
+  }
+}
