@@ -2,12 +2,16 @@
 @tailwind components;
 @tailwind utilities;
 :root {
-  height: 100vh;
+  height: 100vh !important;
 }
 body {
   display: flex;
   flex-direction: column;
   font-family: Roboto, -apple-system, BlinkMacSystemFont, 'Helvetica Neue', 'Segoe UI', 'Oxygen',
     'Ubuntu', 'Cantarell', 'Open Sans', sans-serif;
-  height: 100vh;
+  height: 100vh !important;
+}
+
+#root {
+  height: 100vh !important;
 }

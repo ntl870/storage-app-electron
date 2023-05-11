@@ -2,6 +2,8 @@ import { app, shell, BrowserWindow } from 'electron'
 import { join } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import icon from '../../resources/icon.png?asset'
+import { watch } from 'fs'
+import StartWatcher from './processes'
 
 function createWindow(): void {
   // Create the browser window.
@@ -33,6 +35,8 @@ function createWindow(): void {
   } else {
     mainWindow.loadFile(join(__dirname, '../renderer/index.html'))
   }
+
+  // Watch for file changes in the directory
 }
 
 // This method will be called when Electron has finished
@@ -56,6 +60,13 @@ app.whenReady().then(() => {
     // dock icon is clicked and there are no other windows open.
     if (BrowserWindow.getAllWindows().length === 0) createWindow()
   })
+
+  const dirPath = '/home/ntl870/Inverted_Dep'
+  // watch(dirPath, { recursive: true }, (eventType, filename) => {
+  //   console.log(`File ${filename} has been changed`)
+  //   // Do something here when a file or directory changes
+  // })
+  StartWatcher(dirPath)
 })
 
 // Quit when all windows are closed, except on macOS. There, it's common
