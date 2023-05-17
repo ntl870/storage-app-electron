@@ -1,5 +1,5 @@
 overwrite: true
-schema: ${VITE_API_ENDPOINT}
+schema: ${RENDERER_VITE_API_ENDPOINT}
 generates:
   src/renderer/src/generated/schemas.tsx:
     documents: ['./src/**/*.graphql']

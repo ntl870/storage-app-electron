@@ -1,25 +1,17 @@
+import { makeVar } from '@apollo/client'
 import { Route } from '@renderer/routes/routes'
-import { Layout, Menu, Steps } from 'antd'
+import { Layout, Steps } from 'antd'
 import Sider from 'antd/es/layout/Sider'
 import React from 'react'
-import useRouter from '@renderer/hooks/useRouter'
-import { makeVar } from '@apollo/client'
 
 interface ProtectedLayoutProps {
   children: React.ReactNode
-  routes: Route[]
+  rotues?: Route[]
 }
 
 export const currentStep = makeVar(0)
 
-export const ProtectedLayout = ({ children, routes }: ProtectedLayoutProps) => {
-  const { navigate } = useRouter()
-  const onSelectItem = (key: string) => {
-    navigate(key, {
-      replace: true
-    })
-  }
-
+export const ProtectedLayout = ({ children }: ProtectedLayoutProps) => {
   return (
     <Layout className="min-h-screen">
       <Sider theme="light" className="w-[500px]">
@@ -35,7 +27,7 @@ export const ProtectedLayout = ({ children, routes }: ProtectedLayoutProps) => {
               title: 'Setup your device'
             },
             {
-              title: 'Cloud Storage'
+              title: 'Finishing up'
             }
           ]}
         />

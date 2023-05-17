@@ -1,0 +1,19 @@
+query getMe {
+  getMe {
+    ID
+    name
+    email
+    rootFolder {
+      ID
+    }
+    avatar
+    storageUsed
+    currentPackage {
+      ID
+      maxStorage
+      name
+      detail
+    }
+    stripeCustomerID
+  }
+}

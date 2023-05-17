@@ -1,41 +1,43 @@
-function StartWatcher(path) {
-  const chokidar = require('chokidar')
+import chokidar from 'chokidar'
+import { BrowserWindow } from 'electron'
 
+function StartWatcher(path: string, mainWindow: BrowserWindow) {
   const watcher = chokidar.watch(path, {
     // eslint-disable-next-line no-useless-escape
     ignored: /[\/\\]\./,
-    persistent: true
+    persistent: true,
+    ignoreInitial: true
   })
-  console.log(path)
+
   function onWatcherReady() {
     console.info('From here can you check for real changes, the initial scan has been completed.')
   }
 
-  // Declare the listeners of the watcher
   watcher
     .on('add', function (path) {
       console.log('File', path, 'has been added')
+      mainWindow.webContents.send('file-added', path)
     })
     .on('addDir', function (path) {
       console.log('Directory', path, 'has been added')
+      mainWindow.webContents.send('directory-added', path)
     })
     .on('change', function (path) {
       console.log('File', path, 'has been changed')
+      mainWindow.webContents.send('file-changed', path)
     })
     .on('unlink', function (path) {
       console.log('File', path, 'has been removed')
+      mainWindow.webContents.send('file-removed', path)
     })
     .on('unlinkDir', function (path) {
       console.log('Directory', path, 'has been removed')
+      mainWindow.webContents.send('directory-removed', path)
     })
     .on('error', function (error) {
       console.log('Error happened', error)
     })
     .on('ready', onWatcherReady)
-    .on('raw', function (event, path, details) {
-      // This event should be triggered everytime something happens.
-      console.log('Raw event info:', event, path, details)
-    })
 }
 
 export default StartWatcher

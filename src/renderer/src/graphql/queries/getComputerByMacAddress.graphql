@@ -1,0 +1,9 @@
+query getComputerByMacAddress($macAddress: String!) {
+  getComputerByMacAddress(macAddress: $macAddress) {
+    ID
+    macAddress
+    name
+    hostname
+    storagePath
+  }
+}

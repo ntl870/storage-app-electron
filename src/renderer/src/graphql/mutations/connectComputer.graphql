@@ -1,0 +1,8 @@
+mutation connectComputer($input: ConnectComputerInput!) {
+  connectComputer(input: $input) {
+    ID
+    macAddress
+    hostname
+    storagePath
+  }
+}

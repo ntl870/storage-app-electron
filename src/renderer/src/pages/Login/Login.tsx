@@ -20,6 +20,7 @@ const Login = () => {
         }
       })
       setLocalStorage('token', data?.login || '')
+      setLocalStorage('isTemp', true)
       currentStep(1)
       navigate('/setup-machine')
     } catch (err) {

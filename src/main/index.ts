@@ -1,9 +1,78 @@
-import { app, shell, BrowserWindow } from 'electron'
+import { electronApp, is, optimizer } from '@electron-toolkit/utils'
+import AdmZip from 'adm-zip'
+import { BrowserWindow, app, dialog, ipcMain, shell } from 'electron'
+import getMAC from 'getmac'
+import * as os from 'os'
 import { join } from 'path'
-import { electronApp, optimizer, is } from '@electron-toolkit/utils'
+import request from 'request'
 import icon from '../../resources/icon.png?asset'
-import { watch } from 'fs'
 import StartWatcher from './processes'
+
+function handleFolderSelection(mainWindow: BrowserWindow) {
+  dialog
+    .showOpenDialog({ properties: ['openDirectory'] })
+    .then((result) => {
+      mainWindow.webContents.send('folder-selected', result.filePaths[0])
+    })
+    .catch((err) => {
+      console.log(err)
+    })
+}
+
+const handleDownloadFolder = async (
+  event: Electron.IpcMainEvent,
+  token: string,
+  url: string,
+  extractFolder: string
+) => {
+  try {
+    // Download the ZIP file to a temporary location
+    request(
+      {
+        url: url,
+        encoding: null,
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
+      },
+      (error, response, body) => {
+        if (error) {
+          console.error('Error downloading the ZIP file:', error)
+          return
+        }
+        console.log(url)
+        if (response.statusCode !== 200) {
+          console.error('Failed to download the ZIP file. Status code:', response.statusMessage)
+          return
+        }
+
+        // Save the downloaded ZIP file
+        // writeFileSync(extractFolder, body)
+
+        // Extract the ZIP file
+        const zip = new AdmZip(body)
+        zip.extractAllTo(extractFolder, true)
+        event.sender.send('download-folder-complete')
+        console.log('ZIP file extracted successfully to:', extractFolder)
+      }
+    )
+  } catch (error) {
+    console.log(error)
+    // Notify the renderer process of any errors
+    // event.sender.send('extractionError', error)
+  }
+}
+
+const getComputersProps = () => {
+  const hostname = os.hostname()
+
+  return {
+    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+    // @ts-ignore
+    macAddress: getMAC.default(),
+    hostname
+  }
+}
 
 function createWindow(): void {
   // Create the browser window.
@@ -15,7 +84,8 @@ function createWindow(): void {
     ...(process.platform === 'linux' ? { icon } : {}),
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
-      sandbox: false
+      sandbox: false,
+      nodeIntegration: true
     }
   })
 
@@ -35,8 +105,6 @@ function createWindow(): void {
   } else {
     mainWindow.loadFile(join(__dirname, '../renderer/index.html'))
   }
-
-  // Watch for file changes in the directory
 }
 
 // This method will be called when Electron has finished
@@ -60,13 +128,23 @@ app.whenReady().then(() => {
     // dock icon is clicked and there are no other windows open.
     if (BrowserWindow.getAllWindows().length === 0) createWindow()
   })
+  const mainWindow = BrowserWindow.getAllWindows()[0]
 
   const dirPath = '/home/ntl870/Inverted_Dep'
-  // watch(dirPath, { recursive: true }, (eventType, filename) => {
-  //   console.log(`File ${filename} has been changed`)
-  //   // Do something here when a file or directory changes
-  // })
-  StartWatcher(dirPath)
+  StartWatcher(dirPath, mainWindow)
+
+  ipcMain.on('open-folder', () => {
+    handleFolderSelection(mainWindow)
+  })
+
+  ipcMain.on('get-computers-props', (event) => {
+    event.reply('computers-props', getComputersProps())
+  })
+
+  ipcMain.on('download-folder', (event, args) => {
+    if (!args.url || !args.extractFolder) return
+    handleDownloadFolder(event, args.token, args.url, args.extractFolder)
+  })
 })
 
 // Quit when all windows are closed, except on macOS. There, it's common
