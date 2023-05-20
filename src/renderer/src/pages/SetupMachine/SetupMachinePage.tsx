@@ -5,10 +5,12 @@ import {
   useGetComputerByMacAddressLazyQuery
 } from '@renderer/generated/schemas'
 import useRouter from '@renderer/hooks/useRouter'
+import { useLocalStorage } from '@renderer/utils/tools'
 import { Button, Input, Result, Spin, Typography, notification } from 'antd'
 import { useEffect, useState } from 'react'
 
 const SetupMachinePage = () => {
+  const { setLocalStorage } = useLocalStorage()
   const [connectComputer, { loading }] = useConnectComputerMutation()
   const [getComputerByMacAddress, { loading: getComputerByMacAddressLoading }] =
     useGetComputerByMacAddressLazyQuery()
@@ -52,7 +54,7 @@ const SetupMachinePage = () => {
             macAddress: data.getComputerByMacAddress.macAddress
           })
           // wait for 3 seconds then navigate to the finishing up page
-
+          setLocalStorage('macAddress', data.getComputerByMacAddress.macAddress)
           setTimeout(() => {
             navigate(`/finishing-up?path=${data.getComputerByMacAddress.storagePath}`)
             currentStep(2)
@@ -72,7 +74,7 @@ const SetupMachinePage = () => {
 
   const onSubmit = async () => {
     try {
-      await connectComputer({
+      const { data } = await connectComputer({
         variables: {
           input: {
             name: currentState?.computerName || '',
@@ -82,6 +84,7 @@ const SetupMachinePage = () => {
           }
         }
       })
+      setLocalStorage('macAddress', data?.connectComputer.macAddress)
       currentStep(2)
       navigate(`/finishing-up?path=${currentState?.folderLocation}`)
     } catch (err) {

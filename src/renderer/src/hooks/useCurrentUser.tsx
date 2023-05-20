@@ -1,7 +1,7 @@
 import { useGetMeQuery } from '../generated/schemas'
 
 const useCurrentUser = () => {
-  const { data } = useGetMeQuery({
+  const { data, loading } = useGetMeQuery({
     fetchPolicy: 'cache-and-network'
   })
 
@@ -9,7 +9,15 @@ const useCurrentUser = () => {
     ID: data?.getMe.ID,
     name: data?.getMe.name,
     email: data?.getMe.email,
-    rootFolderID: data?.getMe.rootFolder?.ID
+    rootFolder: data?.getMe.rootFolder,
+    rootFolderID: data?.getMe?.rootFolder?.ID,
+    avatar: data?.getMe.avatar,
+    maxStorage: data?.getMe.currentPackage.maxStorage,
+    storageUsed: data?.getMe.storageUsed,
+    currentPackageID: data?.getMe.currentPackage.ID,
+    stripeCustomerID: data?.getMe.stripeCustomerID,
+    currentPackage: data?.getMe.currentPackage,
+    loading
   }
 }
 

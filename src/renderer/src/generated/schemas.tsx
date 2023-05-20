@@ -340,6 +340,7 @@ export type PeopleWithAccessResponse = {
 };
 
 export type Query = {
+  getAllFilesAndFoldersOfUser: SearchFilesAndFoldersResponse;
   getAllPackages: Array<Package>;
   getAllUserFoldersPagination: GetFoldersByOwnerIdPaginationResponse;
   getAllUsers: Array<User>;
@@ -548,6 +549,60 @@ export function useLoginMutation(baseOptions?: Apollo.MutationHookOptions<LoginM
 export type LoginMutationHookResult = ReturnType<typeof useLoginMutation>;
 export type LoginMutationResult = Apollo.MutationResult<LoginMutation>;
 export type LoginMutationOptions = Apollo.BaseMutationOptions<LoginMutation, LoginMutationVariables>;
+export const GetAllFilesAndFoldersOfUserDocument = gql`
+    query getAllFilesAndFoldersOfUser {
+  getAllFilesAndFoldersOfUser {
+    folders {
+      ID
+      name
+      path
+      createdDate
+      modifiedDate
+      ownerID
+    }
+    files {
+      ID
+      name
+      url
+      fileType
+      ownerID
+      createdDate
+      modifiedDate
+      fileSize
+    }
+  }
+}
+    `;
+
+/**
+ * __useGetAllFilesAndFoldersOfUserQuery__
+ *
+ * To run a query within a React component, call `useGetAllFilesAndFoldersOfUserQuery` and pass it any options that fit your needs.
+ * When your component renders, `useGetAllFilesAndFoldersOfUserQuery` returns an object from Apollo Client that contains loading, error, and data properties
+ * you can use to render your UI.
+ *
+ * @param baseOptions options that will be passed into the query, supported options are listed on: https://www.apollographql.com/docs/react/api/react-hooks/#options;
+ *
+ * @example
+ * const { data, loading, error } = useGetAllFilesAndFoldersOfUserQuery({
+ *   variables: {
+ *   },
+ * });
+ */
+export function useGetAllFilesAndFoldersOfUserQuery(baseOptions?: Apollo.QueryHookOptions<GetAllFilesAndFoldersOfUserQuery, GetAllFilesAndFoldersOfUserQueryVariables>) {
+        const options = {...defaultOptions, ...baseOptions}
+        return Apollo.useQuery<GetAllFilesAndFoldersOfUserQuery, GetAllFilesAndFoldersOfUserQueryVariables>(GetAllFilesAndFoldersOfUserDocument, options);
+      }
+export function useGetAllFilesAndFoldersOfUserLazyQuery(baseOptions?: Apollo.LazyQueryHookOptions<GetAllFilesAndFoldersOfUserQuery, GetAllFilesAndFoldersOfUserQueryVariables>) {
+          const options = {...defaultOptions, ...baseOptions}
+          return Apollo.useLazyQuery<GetAllFilesAndFoldersOfUserQuery, GetAllFilesAndFoldersOfUserQueryVariables>(GetAllFilesAndFoldersOfUserDocument, options);
+        }
+export type GetAllFilesAndFoldersOfUserQueryHookResult = ReturnType<typeof useGetAllFilesAndFoldersOfUserQuery>;
+export type GetAllFilesAndFoldersOfUserLazyQueryHookResult = ReturnType<typeof useGetAllFilesAndFoldersOfUserLazyQuery>;
+export type GetAllFilesAndFoldersOfUserQueryResult = Apollo.QueryResult<GetAllFilesAndFoldersOfUserQuery, GetAllFilesAndFoldersOfUserQueryVariables>;
+export function refetchGetAllFilesAndFoldersOfUserQuery(variables?: GetAllFilesAndFoldersOfUserQueryVariables) {
+      return { query: GetAllFilesAndFoldersOfUserDocument, variables: variables }
+    }
 export const GetComputerByMacAddressDocument = gql`
     query getComputerByMacAddress($macAddress: String!) {
   getComputerByMacAddress(macAddress: $macAddress) {
@@ -697,6 +752,11 @@ export type LoginMutationVariables = Exact<{
 
 
 export type LoginMutation = { login: string };
+
+export type GetAllFilesAndFoldersOfUserQueryVariables = Exact<{ [key: string]: never; }>;
+
+
+export type GetAllFilesAndFoldersOfUserQuery = { getAllFilesAndFoldersOfUser: { folders?: Array<{ ID: string, name: string, path: string, createdDate?: any | null, modifiedDate?: any | null, ownerID?: string | null }> | null, files?: Array<{ ID: string, name: string, url: string, fileType: string, ownerID: string, createdDate?: any | null, modifiedDate?: any | null, fileSize: number }> | null } };
 
 export type GetComputerByMacAddressQueryVariables = Exact<{
   macAddress: Scalars['String'];

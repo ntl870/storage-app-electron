@@ -3,10 +3,22 @@ import AdmZip from 'adm-zip'
 import { BrowserWindow, app, dialog, ipcMain, shell } from 'electron'
 import getMAC from 'getmac'
 import * as os from 'os'
-import { join } from 'path'
+import path, { join } from 'path'
 import request from 'request'
 import icon from '../../resources/icon.png?asset'
 import StartWatcher from './processes'
+import {
+  createWriteStream,
+  existsSync,
+  mkdirSync,
+  readFileSync,
+  unlinkSync,
+  writeFileSync
+} from 'fs'
+import dotenv from 'dotenv'
+import axios from 'axios'
+import { removeFilePathPattern } from './tools'
+dotenv.config()
 
 function handleFolderSelection(mainWindow: BrowserWindow) {
   dialog
@@ -40,7 +52,6 @@ const handleDownloadFolder = async (
           console.error('Error downloading the ZIP file:', error)
           return
         }
-        console.log(url)
         if (response.statusCode !== 200) {
           console.error('Failed to download the ZIP file. Status code:', response.statusMessage)
           return
@@ -72,6 +83,23 @@ const getComputersProps = () => {
     macAddress: getMAC.default(),
     hostname
   }
+}
+
+const handleWriteStorageDataToJSON = (data, userID: string) => {
+  const userDataPath = app.getPath('userData')
+  const dataDir = path.join(userDataPath, 'storageData')
+  mkdirSync(dataDir, { recursive: true })
+
+  const jsonData = JSON.stringify(data, null, 2)
+  const filePath = path.join(dataDir, `storageData-${userID}.json`)
+  writeFileSync(filePath, jsonData)
+}
+
+const isHadStorageData = (userID: string) => {
+  const userDataPath = app.getPath('userData')
+  const dataDir = path.join(userDataPath, 'storageData')
+  const filePath = path.join(dataDir, `storageData-${userID}.json`)
+  return existsSync(filePath)
 }
 
 function createWindow(): void {
@@ -144,6 +172,52 @@ app.whenReady().then(() => {
   ipcMain.on('download-folder', (event, args) => {
     if (!args.url || !args.extractFolder) return
     handleDownloadFolder(event, args.token, args.url, args.extractFolder)
+  })
+
+  ipcMain.on('save-storage-data', (_, args) => {
+    handleWriteStorageDataToJSON(args.data, args.userID)
+  })
+
+  ipcMain.on('is-had-storage-data', (event, args) => {
+    event.reply('is-had-storage-data-reply', isHadStorageData(args.userID))
+  })
+
+  ipcMain.on('get-storage-data', (event, args) => {
+    const userDataPath = app.getPath('userData')
+    const dataDir = path.join(userDataPath, 'storageData')
+    const filePath = path.join(dataDir, `storageData-${args.userID}.json`)
+    const data = readFileSync(filePath, 'utf8')
+    const storageData = JSON.parse(data)
+    event.reply('get-storage-data-reply', storageData)
+  })
+
+  ipcMain.on('update-local-file', async (_, args) => {
+    const userDataPath = app.getPath('userData')
+    const dataDir = path.join(userDataPath, 'storageData')
+    const filePath = path.join(dataDir, `storageData-${args.userID}.json`)
+    const data = readFileSync(filePath, 'utf8')
+    const storageData = JSON.parse(data)
+    args.files.forEach(async (file) => {
+      if (file.source === 'newObj') {
+        const updateIndex = storageData.files.findIndex((item) => item.ID === file.ID)
+        storageData.files[updateIndex] = file
+        handleWriteStorageDataToJSON(storageData, args.userID)
+        try {
+          const { data } = await axios.get(`${process.env.MAIN_VITE_BASE_API}/api/files/${file.ID}`)
+          // write this file
+          const localPath = path.join(args.storagePath, removeFilePathPattern(file.url))
+          const oldFilePath = path.join(
+            args.storagePath,
+            removeFilePathPattern(storageData.files[updateIndex].url)
+          )
+          unlinkSync(oldFilePath)
+          console.log(localPath)
+          writeFileSync(localPath, data.toString(), 'utf8')
+        } catch (err) {
+          // console.log(err)
+        }
+      }
+    })
   })
 })
 

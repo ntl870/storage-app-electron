@@ -1,0 +1,22 @@
+query getAllFilesAndFoldersOfUser {
+  getAllFilesAndFoldersOfUser {
+    folders {
+      ID
+      name
+      path
+      createdDate
+      modifiedDate
+      ownerID
+    }
+    files {
+      ID
+      name
+      url
+      fileType
+      ownerID
+      createdDate
+      modifiedDate
+      fileSize
+    }
+  }
+}

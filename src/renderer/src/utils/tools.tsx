@@ -99,3 +99,73 @@ export const renderIconByFileType = (file: FileSchema) => {
       return <FileOutlined className="text-7xl mt-6" />
   }
 }
+
+export const convertBytesToGiB = (bytes: number) => {
+  return bytes / (1024 * 1024 * 1024)
+}
+
+export const spotChangesStorageObject = (oldObj, newObj) => {
+  const changes = {
+    modifiedFolders: [],
+    modifiedFiles: [],
+    deletedFolders: [],
+    deletedFiles: [],
+    newFolders: [],
+    newFiles: []
+  }
+
+  // Compare folders
+  for (const newFolder of newObj.folders) {
+    const oldFolder = oldObj.folders.find((folder) => folder.ID === newFolder.ID)
+
+    if (!oldFolder) {
+      changes.newFolders.push(newFolder)
+    } else if (oldFolder.modifiedDate !== newFolder.modifiedDate) {
+      const latestModifiedDate =
+        new Date(newFolder.modifiedDate) > new Date(oldFolder.modifiedDate)
+          ? newFolder.modifiedDate
+          : oldFolder.modifiedDate
+
+      const updatedFolder = { ...newFolder, modifiedDate: latestModifiedDate }
+      changes.modifiedFolders.push(updatedFolder)
+    }
+  }
+
+  // Compare files
+  for (const newFile of newObj.files) {
+    const oldFile = oldObj.files.find((file) => file.ID === newFile.ID)
+
+    if (!oldFile) {
+      const newFileWithSource = { ...newFile, source: 'newObj' }
+      changes.newFiles.push(newFileWithSource)
+    } else if (oldFile.modifiedDate !== newFile.modifiedDate) {
+      const latestModifiedDate =
+        new Date(newFile.modifiedDate) > new Date(oldFile.modifiedDate)
+          ? newFile.modifiedDate
+          : oldFile.modifiedDate
+
+      const updatedFile = { ...newFile, modifiedDate: latestModifiedDate }
+      const updatedFileWithSource = { ...updatedFile, source: 'newObj' }
+      changes.modifiedFiles.push(updatedFileWithSource)
+    }
+  }
+
+  // Find deleted folders
+  for (const oldFolder of oldObj.folders) {
+    const folderExists = newObj.folders.some((folder) => folder.ID === oldFolder.ID)
+    if (!folderExists) {
+      changes.deletedFolders.push(oldFolder)
+    }
+  }
+
+  // Find deleted files
+  for (const oldFile of oldObj.files) {
+    const fileExists = newObj.files.some((file) => file.ID === oldFile.ID)
+    if (!fileExists) {
+      const deletedFileWithSource = { ...oldFile, source: 'oldObj' }
+      changes.deletedFiles.push(deletedFileWithSource)
+    }
+  }
+
+  return changes
+}
