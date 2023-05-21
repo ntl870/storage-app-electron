@@ -8,10 +8,11 @@ import request from 'request'
 import icon from '../../resources/icon.png?asset'
 import StartWatcher from './processes'
 import {
-  createWriteStream,
   existsSync,
   mkdirSync,
   readFileSync,
+  renameSync,
+  rmdirSync,
   unlinkSync,
   writeFileSync
 } from 'fs'
@@ -100,6 +101,14 @@ const isHadStorageData = (userID: string) => {
   const dataDir = path.join(userDataPath, 'storageData')
   const filePath = path.join(dataDir, `storageData-${userID}.json`)
   return existsSync(filePath)
+}
+
+const getStorageJSONData = (userID: string) => {
+  const userDataPath = app.getPath('userData')
+  const dataDir = path.join(userDataPath, 'storageData')
+  const filePath = path.join(dataDir, `storageData-${userID}.json`)
+  const data = readFileSync(filePath, 'utf8')
+  return JSON.parse(data)
 }
 
 function createWindow(): void {
@@ -192,11 +201,7 @@ app.whenReady().then(() => {
   })
 
   ipcMain.on('update-local-file', async (_, args) => {
-    const userDataPath = app.getPath('userData')
-    const dataDir = path.join(userDataPath, 'storageData')
-    const filePath = path.join(dataDir, `storageData-${args.userID}.json`)
-    const data = readFileSync(filePath, 'utf8')
-    const storageData = JSON.parse(data)
+    const storageData = getStorageJSONData(args.userID)
     args.files.forEach(async (file) => {
       if (file.source === 'newObj') {
         const updateIndex = storageData.files.findIndex((item) => item.ID === file.ID)
@@ -211,12 +216,98 @@ app.whenReady().then(() => {
             removeFilePathPattern(storageData.files[updateIndex].url)
           )
           unlinkSync(oldFilePath)
-          console.log(localPath)
-          writeFileSync(localPath, data.toString(), 'utf8')
+          writeFileSync(localPath, data)
         } catch (err) {
           // console.log(err)
         }
       }
+    })
+  })
+
+  ipcMain.on('get-new-local-files', async (_, args) => {
+    const storageData = getStorageJSONData(args.userID)
+
+    args.files.forEach(async (file) => {
+      const { data } = await axios.get(`${process.env.MAIN_VITE_BASE_API}/api/files/${file.ID}`)
+      // write this file
+      const localPath = path.join(args.storagePath, removeFilePathPattern(file.url))
+      writeFileSync(localPath, data)
+    })
+
+    storageData.files.push(...args.files)
+    handleWriteStorageDataToJSON(storageData, args.userID)
+  })
+
+  ipcMain.on('delete-local-files', (_, args) => {
+    const storageData = getStorageJSONData(args.userID)
+    args.files.forEach((file) => {
+      const deleteFilePath = path.join(args.storagePath, removeFilePathPattern(file.url))
+      unlinkSync(deleteFilePath)
+      storageData.files = storageData.files.filter((item) => item.ID !== file.ID)
+      handleWriteStorageDataToJSON(storageData, args.userID)
+    })
+  })
+
+  ipcMain.on('move-local-files', (_, args) => {
+    const storageData = getStorageJSONData(args.userID)
+    args.files.forEach((file) => {
+      const updateIndex = storageData.files.findIndex((item) => item.ID === file.ID)
+      const oldFilePath = path.join(
+        args.storagePath,
+        removeFilePathPattern(storageData.files[updateIndex].url)
+      )
+      const newFilePath = path.join(args.storagePath, removeFilePathPattern(file.url))
+      console.log(oldFilePath, newFilePath)
+      renameSync(oldFilePath, newFilePath)
+      storageData.files[updateIndex] = file
+      handleWriteStorageDataToJSON(storageData, args.userID)
+    })
+  })
+
+  ipcMain.on('update-local-folders', (_, args) => {
+    const storageData = getStorageJSONData(args.userID)
+    args.folders.forEach(async (folder) => {
+      const updateIndex = storageData.folders.findIndex((item) => item.ID === folder.ID)
+      // const { data } = await axios.get(
+      //   `${process.env.MAIN_VITE_BASE_API}/api/folders/${folder.ID}`,
+      //   {
+      //     headers: {
+      //       Authorization: `Bearer ${args.token}`
+      //     }
+      //   }
+      // )
+
+      request(
+        {
+          url: `${process.env.MAIN_VITE_BASE_API}/api/folders/${folder.ID}`,
+          encoding: null,
+          headers: {
+            Authorization: `Bearer ${args.token}`
+          }
+        },
+        (error, response, body) => {
+          // write this folder
+          const localPath = path.join(args.storagePath, removeFilePathPattern(folder.path))
+          const oldFolderPath = path.join(
+            args.storagePath,
+            removeFilePathPattern(storageData.folders[updateIndex].path)
+          )
+          console.log(oldFolderPath, localPath)
+          rmdirSync(oldFolderPath, { recursive: true })
+          mkdirSync(localPath, { recursive: true })
+
+          // Save the zip file
+
+          // Extract the zip file
+          const zip = new AdmZip(body)
+          zip.extractAllTo(localPath, true)
+
+          // Remove the zip file
+          // unlinkSync(zipFilePath)
+          storageData.folders[updateIndex] = folder
+          handleWriteStorageDataToJSON(storageData, args.userID)
+        }
+      )
     })
   })
 })

@@ -111,7 +111,9 @@ export const spotChangesStorageObject = (oldObj, newObj) => {
     deletedFolders: [],
     deletedFiles: [],
     newFolders: [],
-    newFiles: []
+    newFiles: [],
+    movedFolders: [],
+    movedFiles: []
   }
 
   // Compare folders
@@ -119,7 +121,8 @@ export const spotChangesStorageObject = (oldObj, newObj) => {
     const oldFolder = oldObj.folders.find((folder) => folder.ID === newFolder.ID)
 
     if (!oldFolder) {
-      changes.newFolders.push(newFolder)
+      const newFolderWithSource = { ...newFolder, source: 'newObj' }
+      changes.newFolders.push(newFolderWithSource)
     } else if (oldFolder.modifiedDate !== newFolder.modifiedDate) {
       const latestModifiedDate =
         new Date(newFolder.modifiedDate) > new Date(oldFolder.modifiedDate)
@@ -127,7 +130,20 @@ export const spotChangesStorageObject = (oldObj, newObj) => {
           : oldFolder.modifiedDate
 
       const updatedFolder = { ...newFolder, modifiedDate: latestModifiedDate }
-      changes.modifiedFolders.push(updatedFolder)
+      const updatedFolderWithSource = { ...updatedFolder, source: 'newObj' }
+      changes.modifiedFolders.push(updatedFolderWithSource)
+    }
+
+    // Check for moved folders
+    if (oldFolder && oldFolder.path !== newFolder.path) {
+      const movedFolderWithSource = { ...newFolder, source: 'newObj' }
+      changes.movedFolders.push(movedFolderWithSource)
+
+      // Exclude moved folders from modifiedFolders
+      const index = changes.modifiedFolders.findIndex((folder) => folder.ID === newFolder.ID)
+      if (index !== -1) {
+        changes.modifiedFolders.splice(index, 1)
+      }
     }
   }
 
@@ -139,14 +155,23 @@ export const spotChangesStorageObject = (oldObj, newObj) => {
       const newFileWithSource = { ...newFile, source: 'newObj' }
       changes.newFiles.push(newFileWithSource)
     } else if (oldFile.modifiedDate !== newFile.modifiedDate) {
-      const latestModifiedDate =
-        new Date(newFile.modifiedDate) > new Date(oldFile.modifiedDate)
-          ? newFile.modifiedDate
-          : oldFile.modifiedDate
+      // Check if the file is not moved
+      if (oldFile.url === newFile.url) {
+        const latestModifiedDate =
+          new Date(newFile.modifiedDate) > new Date(oldFile.modifiedDate)
+            ? newFile.modifiedDate
+            : oldFile.modifiedDate
 
-      const updatedFile = { ...newFile, modifiedDate: latestModifiedDate }
-      const updatedFileWithSource = { ...updatedFile, source: 'newObj' }
-      changes.modifiedFiles.push(updatedFileWithSource)
+        const updatedFile = { ...newFile, modifiedDate: latestModifiedDate }
+        const updatedFileWithSource = { ...updatedFile, source: 'newObj' }
+        changes.modifiedFiles.push(updatedFileWithSource)
+      }
+    }
+
+    // Check for moved files
+    if (oldFile && oldFile.url !== newFile.url) {
+      const movedFileWithSource = { ...newFile, source: 'newObj' }
+      changes.movedFiles.push(movedFileWithSource)
     }
   }
 
@@ -154,7 +179,8 @@ export const spotChangesStorageObject = (oldObj, newObj) => {
   for (const oldFolder of oldObj.folders) {
     const folderExists = newObj.folders.some((folder) => folder.ID === oldFolder.ID)
     if (!folderExists) {
-      changes.deletedFolders.push(oldFolder)
+      const deletedFolderWithSource = { ...oldFolder, source: 'oldObj' }
+      changes.deletedFolders.push(deletedFolderWithSource)
     }
   }
 

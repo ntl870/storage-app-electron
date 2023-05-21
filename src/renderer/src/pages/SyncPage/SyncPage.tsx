@@ -2,19 +2,22 @@ import { LaptopOutlined } from '@ant-design/icons'
 import { useGetAllFilesAndFoldersOfUserLazyQuery } from '@renderer/generated/schemas'
 import useComputer from '@renderer/hooks/useComputer'
 import useCurrentUser from '@renderer/hooks/useCurrentUser'
-import { convertBytesToGiB, spotChangesStorageObject } from '@renderer/utils/tools'
-import { Progress, Spin, Typography } from 'antd'
+import { convertBytesToGiB, spotChangesStorageObject, useLocalStorage } from '@renderer/utils/tools'
+import { Button, Progress, Spin, Typography } from 'antd'
 import { useEffect } from 'react'
 
 export const SyncPage = () => {
   const { name, hostname, storagePath } = useComputer()
   const { storageUsed, maxStorage, ID: userID, loading } = useCurrentUser()
   const [getAllFilesAndFolders] = useGetAllFilesAndFoldersOfUserLazyQuery()
+  const { getLocalStorage } = useLocalStorage()
 
   const handleSync = async (isInitial: boolean) => {
     if (!userID) return
     try {
-      const { data } = await getAllFilesAndFolders()
+      const { data } = await getAllFilesAndFolders({
+        fetchPolicy: 'network-only'
+      })
       if (isInitial) {
         window.electron.ipcRenderer.send('save-storage-data', {
           data: data?.getAllFilesAndFoldersOfUser,
@@ -28,10 +31,42 @@ export const SyncPage = () => {
           const changes = spotChangesStorageObject(arg, data?.getAllFilesAndFoldersOfUser)
           console.log(changes)
 
-          if (changes.modifiedFiles) {
+          if (changes.modifiedFiles.length) {
             window.electron.ipcRenderer.send('update-local-file', {
               userID,
-              files: changes.modifiedFiles,
+              files: changes.modifiedFiles.filter((item: any) => item.source === 'newObj'),
+              storagePath
+            })
+          }
+          if (changes.newFiles.length) {
+            window.electron.ipcRenderer.send('get-new-local-files', {
+              files: changes.newFiles.filter((item: any) => item.source === 'newObj'),
+              userID,
+              storagePath
+            })
+          }
+
+          if (changes.deletedFiles.length) {
+            window.electron.ipcRenderer.send('delete-local-files', {
+              files: changes.deletedFiles.filter((item: any) => item.source === 'newObj'),
+              userID,
+              storagePath
+            })
+          }
+
+          if (changes.modifiedFolders.length) {
+            window.electron.ipcRenderer.send('update-local-folders', {
+              userID,
+              folders: changes.modifiedFolders.filter((item: any) => item.source === 'newObj'),
+              storagePath,
+              token: getLocalStorage('token')
+            })
+          }
+
+          if (changes.movedFiles.length) {
+            window.electron.ipcRenderer.send('move-local-files', {
+              userID,
+              files: changes.movedFiles.filter((item: any) => item.source === 'newObj'),
               storagePath
             })
           }
@@ -48,7 +83,7 @@ export const SyncPage = () => {
       userID
     })
     window.electron.ipcRenderer.on('is-had-storage-data-reply', async (_, arg) => {
-      if (!!arg) await handleSync(false)
+      if (!arg) await handleSync(true)
     })
   }, [userID])
 
@@ -78,6 +113,9 @@ export const SyncPage = () => {
         <Typography.Text className="font-bold">{`${convertBytesToGiB(storageUsed ?? 0).toFixed(
           2
         )} GB used of ${maxStorage} GB`}</Typography.Text>
+      </div>
+      <div>
+        <Button onClick={() => handleSync(false)}>Sync</Button>
       </div>
     </div>
   )
