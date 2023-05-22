@@ -38,6 +38,7 @@
     "getmac": "^5.20.0",
     "graphql": "^16.6.0",
     "graphql-tag": "^2.12.6",
+    "is-zip": "^1.0.0",
     "react-router-dom": "^6.9.0",
     "request": "^2.88.2",
     "styled-components": "^5.3.9"

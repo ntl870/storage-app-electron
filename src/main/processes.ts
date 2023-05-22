@@ -1,7 +1,8 @@
 import chokidar from 'chokidar'
 import { BrowserWindow } from 'electron'
+import { handleWriteToNewLocalChanges, getNewLocalChangesJSONData } from '.'
 
-function StartWatcher(path: string, mainWindow: BrowserWindow) {
+function StartWatcher(path: string, mainWindow: BrowserWindow, userID: string) {
   const watcher = chokidar.watch(path, {
     // eslint-disable-next-line no-useless-escape
     ignored: /[\/\\]\./,
@@ -15,8 +16,13 @@ function StartWatcher(path: string, mainWindow: BrowserWindow) {
 
   watcher
     .on('add', function (path) {
-      console.log('File', path, 'has been added')
+      const storageData = getNewLocalChangesJSONData(userID)
+      storageData.files.push({
+        path,
+        status: 'added'
+      })
       mainWindow.webContents.send('file-added', path)
+      handleWriteToNewLocalChanges(storageData, userID)
     })
     .on('addDir', function (path) {
       console.log('Directory', path, 'has been added')

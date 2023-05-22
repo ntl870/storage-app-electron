@@ -3,14 +3,82 @@ import { useGetAllFilesAndFoldersOfUserLazyQuery } from '@renderer/generated/sch
 import useComputer from '@renderer/hooks/useComputer'
 import useCurrentUser from '@renderer/hooks/useCurrentUser'
 import { convertBytesToGiB, spotChangesStorageObject, useLocalStorage } from '@renderer/utils/tools'
-import { Button, Progress, Spin, Typography } from 'antd'
-import { useEffect } from 'react'
+import { Button, Progress, Result, Spin, Typography } from 'antd'
+import { useEffect, useState } from 'react'
 
 export const SyncPage = () => {
   const { name, hostname, storagePath } = useComputer()
   const { storageUsed, maxStorage, ID: userID, loading } = useCurrentUser()
   const [getAllFilesAndFolders] = useGetAllFilesAndFoldersOfUserLazyQuery()
   const { getLocalStorage } = useLocalStorage()
+  const [loadingState, setLoadingState] = useState({
+    modifiedFiles: false,
+    newFiles: false,
+    deletedFiles: false,
+    movedFiles: false,
+    modifiedFolders: false,
+    newFolders: false,
+    deletedFolders: false,
+    movedFolders: false
+  })
+
+  useEffect(() => {
+    window.electron.ipcRenderer.on('update-local-file-reply', () => {
+      setLoadingState((prevState) => ({
+        ...prevState,
+        modifiedFiles: false
+      }))
+    })
+
+    window.electron.ipcRenderer.on('get-new-local-files-reply', () => {
+      setLoadingState((prevState) => ({
+        ...prevState,
+        newFiles: false
+      }))
+    })
+
+    window.electron.ipcRenderer.on('delete-local-files-reply', () => {
+      setLoadingState((prevState) => ({
+        ...prevState,
+        deletedFiles: false
+      }))
+    })
+
+    window.electron.ipcRenderer.on('move-local-files-reply', () => {
+      setLoadingState((prevState) => ({
+        ...prevState,
+        movedFiles: false
+      }))
+    })
+
+    window.electron.ipcRenderer.on('update-local-folders-reply', () => {
+      setLoadingState((prevState) => ({
+        ...prevState,
+        modifiedFolders: false
+      }))
+    })
+
+    window.electron.ipcRenderer.on('get-new-local-folders-reply', () => {
+      setLoadingState((prevState) => ({
+        ...prevState,
+        newFolders: false
+      }))
+    })
+
+    window.electron.ipcRenderer.on('delete-local-folders-reply', () => {
+      setLoadingState((prevState) => ({
+        ...prevState,
+        deletedFolders: false
+      }))
+    })
+
+    window.electron.ipcRenderer.on('move-local-folders-reply', () => {
+      setLoadingState((prevState) => ({
+        ...prevState,
+        movedFolders: false
+      }))
+    })
+  }, [])
 
   const handleSync = async (isInitial: boolean) => {
     if (!userID) return
@@ -32,6 +100,10 @@ export const SyncPage = () => {
           console.log(changes)
 
           if (changes.modifiedFiles.length) {
+            setLoadingState((prevState) => ({
+              ...prevState,
+              modifiedFiles: true
+            }))
             window.electron.ipcRenderer.send('update-local-file', {
               userID,
               files: changes.modifiedFiles.filter((item: any) => item.source === 'newObj'),
@@ -39,6 +111,10 @@ export const SyncPage = () => {
             })
           }
           if (changes.newFiles.length) {
+            setLoadingState((prevState) => ({
+              ...prevState,
+              newFiles: true
+            }))
             window.electron.ipcRenderer.send('get-new-local-files', {
               files: changes.newFiles.filter((item: any) => item.source === 'newObj'),
               userID,
@@ -47,6 +123,10 @@ export const SyncPage = () => {
           }
 
           if (changes.deletedFiles.length) {
+            setLoadingState((prevState) => ({
+              ...prevState,
+              deletedFiles: true
+            }))
             window.electron.ipcRenderer.send('delete-local-files', {
               files: changes.deletedFiles.filter((item: any) => item.source === 'newObj'),
               userID,
@@ -54,7 +134,23 @@ export const SyncPage = () => {
             })
           }
 
+          if (changes.movedFiles.length) {
+            setLoadingState((prevState) => ({
+              ...prevState,
+              movedFiles: true
+            }))
+            window.electron.ipcRenderer.send('move-local-files', {
+              userID,
+              files: changes.movedFiles.filter((item: any) => item.source === 'newObj'),
+              storagePath
+            })
+          }
+
           if (changes.modifiedFolders.length) {
+            setLoadingState((prevState) => ({
+              ...prevState,
+              modifiedFolders: true
+            }))
             window.electron.ipcRenderer.send('update-local-folders', {
               userID,
               folders: changes.modifiedFolders.filter((item: any) => item.source === 'newObj'),
@@ -63,11 +159,43 @@ export const SyncPage = () => {
             })
           }
 
-          if (changes.movedFiles.length) {
-            window.electron.ipcRenderer.send('move-local-files', {
+          if (changes.newFolders.length) {
+            setLoadingState((prevState) => ({
+              ...prevState,
+              newFolders: true
+            }))
+            window.electron.ipcRenderer.send('get-new-local-folders', {
               userID,
-              files: changes.movedFiles.filter((item: any) => item.source === 'newObj'),
-              storagePath
+              folders: changes.newFolders.filter((item: any) => item.source === 'newObj'),
+              storagePath,
+              token: getLocalStorage('token')
+            })
+          }
+
+          if (changes.deletedFolders.length) {
+            setLoadingState((prevState) => ({
+              ...prevState,
+              deletedFolders: true
+            }))
+
+            window.electron.ipcRenderer.send('delete-local-folders', {
+              userID,
+              folders: changes.deletedFolders.filter((item: any) => item.source === 'newObj'),
+              storagePath,
+              token: getLocalStorage('token')
+            })
+          }
+
+          if (changes.movedFolders.length) {
+            setLoadingState((prevState) => ({
+              ...prevState,
+              movedFolders: true
+            }))
+            window.electron.ipcRenderer.send('move-local-folders', {
+              userID,
+              folders: changes.movedFolders.filter((item: any) => item.source === 'newObj'),
+              storagePath,
+              token: getLocalStorage('token')
             })
           }
         })
@@ -115,7 +243,21 @@ export const SyncPage = () => {
         )} GB used of ${maxStorage} GB`}</Typography.Text>
       </div>
       <div>
-        <Button onClick={() => handleSync(false)}>Sync</Button>
+        {loading && Object.values(loadingState).some((item) => item) ? (
+          <div className="flex flex-row items-center">
+            <Spin size="small" className="mr-2" />
+            <Typography.Text className="text-slate-500">Syncing...</Typography.Text>
+          </div>
+        ) : (
+          <div className="flex flex-col">
+            <Result status="success" title="Successfully Synced" />
+            <div className="flex justify-center">
+              <Button className="w-48" onClick={() => handleSync(false)}>
+                Sync
+              </Button>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   )

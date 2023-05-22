@@ -6,18 +6,20 @@ import { Result, Spin } from 'antd'
 import { useEffect, useState } from 'react'
 
 export const FinishingUpPage = () => {
-  const { rootFolderID } = useCurrentUser()
+  const { rootFolderID, ID: userID } = useCurrentUser()
   const { searchParamsObject, navigate } = useRouter()
-  const { getLocalStorage } = useLocalStorage()
+  const { getLocalStorage, setLocalStorage } = useLocalStorage()
   const [isLoading, setIsLoading] = useState(false)
 
   useEffect(() => {
+    setLocalStorage('storagePath', searchParamsObject.path)
+    setLocalStorage('userID', userID)
     currentStep(2)
     if (rootFolderID) {
       setIsLoading(true)
 
       window.electron.ipcRenderer.send('download-folder', {
-        url: `${import.meta.env.RENDERER_VITE_BASE_API}/api/folders/${rootFolderID}`,
+        url: `${import.meta.env.RENDERER_VITE_BASE_API}/folders/${rootFolderID}`,
         extractFolder: searchParamsObject.path,
         token: getLocalStorage('token')
       })

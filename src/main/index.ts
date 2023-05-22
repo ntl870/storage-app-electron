@@ -4,6 +4,7 @@ import { BrowserWindow, app, dialog, ipcMain, shell } from 'electron'
 import getMAC from 'getmac'
 import * as os from 'os'
 import path, { join } from 'path'
+import isZip from 'is-zip'
 import request from 'request'
 import icon from '../../resources/icon.png?asset'
 import StartWatcher from './processes'
@@ -96,6 +97,38 @@ const handleWriteStorageDataToJSON = (data, userID: string) => {
   writeFileSync(filePath, jsonData)
 }
 
+export const getNewLocalChangesJSONData = (userID: string) => {
+  try {
+    const userDataPath = app.getPath('userData')
+    const dataDir = path.join(userDataPath, 'storageData')
+    const filePath = path.join(dataDir, `newLocalChanges-${userID}.json`)
+    const data = readFileSync(filePath, 'utf8')
+    return JSON.parse(data)
+  } catch (err) {
+    return {
+      files: [],
+      folders: []
+    }
+  }
+}
+
+export const handleWriteToNewLocalChanges = (data, userID: string) => {
+  const userDataPath = app.getPath('userData')
+  const dataDir = path.join(userDataPath, 'storageData')
+  mkdirSync(dataDir, { recursive: true })
+
+  const jsonData = JSON.stringify(data, null, 2)
+  const filePath = path.join(dataDir, `newLocalChanges-${userID}.json`)
+  writeFileSync(filePath, jsonData)
+}
+
+const clearNewLocalChanges = (userID: string) => {
+  const userDataPath = app.getPath('userData')
+  const dataDir = path.join(userDataPath, 'storageData')
+  const filePath = path.join(dataDir, `newLocalChanges-${userID}.json`)
+  unlinkSync(filePath)
+}
+
 const isHadStorageData = (userID: string) => {
   const userDataPath = app.getPath('userData')
   const dataDir = path.join(userDataPath, 'storageData')
@@ -147,7 +180,7 @@ function createWindow(): void {
 // This method will be called when Electron has finished
 // initialization and is ready to create browser windows.
 // Some APIs can only be used after this event occurs.
-app.whenReady().then(() => {
+app.whenReady().then(async () => {
   // Set app user model id for windows
   electronApp.setAppUserModelId('com.electron')
 
@@ -167,8 +200,18 @@ app.whenReady().then(() => {
   })
   const mainWindow = BrowserWindow.getAllWindows()[0]
 
-  const dirPath = '/home/ntl870/Inverted_Dep'
-  StartWatcher(dirPath, mainWindow)
+  const userID =
+    String(
+      await mainWindow.webContents.executeJavaScript('JSON.parse(localStorage.getItem("userID"))')
+    ) || ''
+
+  const dirPath =
+    String(
+      await mainWindow.webContents.executeJavaScript(
+        'JSON.parse(localStorage.getItem("storagePath"))'
+      )
+    ) || ''
+  StartWatcher(dirPath, mainWindow, userID)
 
   ipcMain.on('open-folder', () => {
     handleFolderSelection(mainWindow)
@@ -200,7 +243,7 @@ app.whenReady().then(() => {
     event.reply('get-storage-data-reply', storageData)
   })
 
-  ipcMain.on('update-local-file', async (_, args) => {
+  ipcMain.on('update-local-file', async (event, args) => {
     const storageData = getStorageJSONData(args.userID)
     args.files.forEach(async (file) => {
       if (file.source === 'newObj') {
@@ -208,7 +251,7 @@ app.whenReady().then(() => {
         storageData.files[updateIndex] = file
         handleWriteStorageDataToJSON(storageData, args.userID)
         try {
-          const { data } = await axios.get(`${process.env.MAIN_VITE_BASE_API}/api/files/${file.ID}`)
+          const { data } = await axios.get(`${process.env.MAIN_VITE_BASE_API}/files/${file.ID}`)
           // write this file
           const localPath = path.join(args.storagePath, removeFilePathPattern(file.url))
           const oldFilePath = path.join(
@@ -222,13 +265,14 @@ app.whenReady().then(() => {
         }
       }
     })
+    event.reply('update-local-file-reply')
   })
 
-  ipcMain.on('get-new-local-files', async (_, args) => {
+  ipcMain.on('get-new-local-files', async (event, args) => {
     const storageData = getStorageJSONData(args.userID)
 
     args.files.forEach(async (file) => {
-      const { data } = await axios.get(`${process.env.MAIN_VITE_BASE_API}/api/files/${file.ID}`)
+      const { data } = await axios.get(`${process.env.MAIN_VITE_BASE_API}/files/${file.ID}`)
       // write this file
       const localPath = path.join(args.storagePath, removeFilePathPattern(file.url))
       writeFileSync(localPath, data)
@@ -236,9 +280,10 @@ app.whenReady().then(() => {
 
     storageData.files.push(...args.files)
     handleWriteStorageDataToJSON(storageData, args.userID)
+    event.reply('get-new-local-files-reply')
   })
 
-  ipcMain.on('delete-local-files', (_, args) => {
+  ipcMain.on('delete-local-files', (event, args) => {
     const storageData = getStorageJSONData(args.userID)
     args.files.forEach((file) => {
       const deleteFilePath = path.join(args.storagePath, removeFilePathPattern(file.url))
@@ -246,9 +291,10 @@ app.whenReady().then(() => {
       storageData.files = storageData.files.filter((item) => item.ID !== file.ID)
       handleWriteStorageDataToJSON(storageData, args.userID)
     })
+    event.reply('delete-local-files-reply')
   })
 
-  ipcMain.on('move-local-files', (_, args) => {
+  ipcMain.on('move-local-files', (event, args) => {
     const storageData = getStorageJSONData(args.userID)
     args.files.forEach((file) => {
       const updateIndex = storageData.files.findIndex((item) => item.ID === file.ID)
@@ -262,24 +308,18 @@ app.whenReady().then(() => {
       storageData.files[updateIndex] = file
       handleWriteStorageDataToJSON(storageData, args.userID)
     })
+
+    event.reply('move-local-files-reply')
   })
 
-  ipcMain.on('update-local-folders', (_, args) => {
+  ipcMain.on('update-local-folders', (event, args) => {
     const storageData = getStorageJSONData(args.userID)
     args.folders.forEach(async (folder) => {
       const updateIndex = storageData.folders.findIndex((item) => item.ID === folder.ID)
-      // const { data } = await axios.get(
-      //   `${process.env.MAIN_VITE_BASE_API}/api/folders/${folder.ID}`,
-      //   {
-      //     headers: {
-      //       Authorization: `Bearer ${args.token}`
-      //     }
-      //   }
-      // )
 
       request(
         {
-          url: `${process.env.MAIN_VITE_BASE_API}/api/folders/${folder.ID}`,
+          url: `${process.env.MAIN_VITE_BASE_API}/folders/${folder.ID}`,
           encoding: null,
           headers: {
             Authorization: `Bearer ${args.token}`
@@ -309,6 +349,72 @@ app.whenReady().then(() => {
         }
       )
     })
+    event.reply('update-local-folders-reply')
+  })
+
+  ipcMain.on('get-new-local-folders', (event, args) => {
+    const storageData = getStorageJSONData(args.userID)
+    args.folders.forEach(async (folder) => {
+      request(
+        {
+          url: `${process.env.MAIN_VITE_BASE_API}/folders/${folder.ID}`,
+          encoding: null,
+          headers: {
+            Authorization: `Bearer ${args.token}`
+          }
+        },
+        (error, response, body) => {
+          // write this folder
+          const localPath = path.join(args.storagePath, removeFilePathPattern(folder.path))
+          mkdirSync(localPath, { recursive: true })
+
+          // Save the zip file
+
+          // Extract the zip file
+          if (isZip(body)) {
+            const zip = new AdmZip(body)
+            zip.extractAllTo(localPath, true)
+          }
+
+          // Remove the zip file
+          // unlinkSync(zipFilePath)
+          storageData.folders.push(folder)
+          handleWriteStorageDataToJSON(storageData, args.userID)
+        }
+      )
+    })
+    event.reply('get-new-local-folders-reply')
+  })
+
+  ipcMain.on('delete-local-folders', (event, args) => {
+    const storageData = getStorageJSONData(args.userID)
+    args.folders.forEach((folder) => {
+      const deleteFolderPath = path.join(args.storagePath, removeFilePathPattern(folder.path))
+      rmdirSync(deleteFolderPath, { recursive: true })
+      storageData.folders = storageData.folders.filter((item) => item.ID !== folder.ID)
+      handleWriteStorageDataToJSON(storageData, args.userID)
+    })
+    event.reply('delete-local-folders-reply')
+  })
+
+  ipcMain.on('move-local-folders', (event, args) => {
+    const storageData = getStorageJSONData(args.userID)
+    args.folders.forEach((folder) => {
+      const updateIndex = storageData.folders.findIndex((item) => item.ID === folder.ID)
+      const oldFolderPath = path.join(
+        args.storagePath,
+        removeFilePathPattern(storageData.folders[updateIndex].path)
+      )
+      const newFolderPath = path.join(args.storagePath, removeFilePathPattern(folder.path))
+      renameSync(oldFolderPath, newFolderPath)
+      storageData.folders[updateIndex] = folder
+      handleWriteStorageDataToJSON(storageData, args.userID)
+    })
+    event.reply('move-local-folders-reply')
+  })
+
+  ipcMain.on('file-added', (_, args) => {
+    console.log(123123, args)
   })
 })
 
