@@ -98,6 +98,7 @@ export type Mutation = {
   moveFolder: Scalars['String'];
   moveFolderOutOfTrash: Scalars['String'];
   moveFolderToTrash: Scalars['String'];
+  removeComputer: Scalars['String'];
   removeUserFromFile: Scalars['String'];
   removeUserFromFolder: Scalars['String'];
   renameFile: Scalars['String'];
@@ -110,6 +111,7 @@ export type Mutation = {
   starFolder: Scalars['String'];
   unstarFile: Scalars['String'];
   unstarFolder: Scalars['String'];
+  updateComputerStoragePath: Computer;
   updateUser: User;
   uploadFile: File;
   uploadFolder: Scalars['String'];
@@ -230,6 +232,11 @@ export type MutationMoveFolderToTrashArgs = {
 };
 
 
+export type MutationRemoveComputerArgs = {
+  macAddress: Scalars['String'];
+};
+
+
 export type MutationRemoveUserFromFileArgs = {
   fileID: Scalars['String'];
   targetUserID: Scalars['String'];
@@ -298,6 +305,12 @@ export type MutationUnstarFolderArgs = {
 };
 
 
+export type MutationUpdateComputerStoragePathArgs = {
+  macAddress: Scalars['String'];
+  storagePath: Scalars['String'];
+};
+
+
 export type MutationUpdateUserArgs = {
   input: UpdateUserPayload;
 };
@@ -358,6 +371,7 @@ export type Query = {
   getStarredFiles: Array<File>;
   getStarredFolders: Array<Folder>;
   getUserByID: User;
+  getUserComputers: Array<Computer>;
   getUserFiles: Array<File>;
   getUserSharedFiles: Array<File>;
   getUserSharedFolders: Array<Folder>;
@@ -549,6 +563,42 @@ export function useLoginMutation(baseOptions?: Apollo.MutationHookOptions<LoginM
 export type LoginMutationHookResult = ReturnType<typeof useLoginMutation>;
 export type LoginMutationResult = Apollo.MutationResult<LoginMutation>;
 export type LoginMutationOptions = Apollo.BaseMutationOptions<LoginMutation, LoginMutationVariables>;
+export const UpdateComputerStoragePathDocument = gql`
+    mutation updateComputerStoragePath($macAddress: String!, $storagePath: String!) {
+  updateComputerStoragePath(macAddress: $macAddress, storagePath: $storagePath) {
+    ID
+    macAddress
+    storagePath
+  }
+}
+    `;
+export type UpdateComputerStoragePathMutationFn = Apollo.MutationFunction<UpdateComputerStoragePathMutation, UpdateComputerStoragePathMutationVariables>;
+
+/**
+ * __useUpdateComputerStoragePathMutation__
+ *
+ * To run a mutation, you first call `useUpdateComputerStoragePathMutation` within a React component and pass it any options that fit your needs.
+ * When your component renders, `useUpdateComputerStoragePathMutation` returns a tuple that includes:
+ * - A mutate function that you can call at any time to execute the mutation
+ * - An object with fields that represent the current status of the mutation's execution
+ *
+ * @param baseOptions options that will be passed into the mutation, supported options are listed on: https://www.apollographql.com/docs/react/api/react-hooks/#options-2;
+ *
+ * @example
+ * const [updateComputerStoragePathMutation, { data, loading, error }] = useUpdateComputerStoragePathMutation({
+ *   variables: {
+ *      macAddress: // value for 'macAddress'
+ *      storagePath: // value for 'storagePath'
+ *   },
+ * });
+ */
+export function useUpdateComputerStoragePathMutation(baseOptions?: Apollo.MutationHookOptions<UpdateComputerStoragePathMutation, UpdateComputerStoragePathMutationVariables>) {
+        const options = {...defaultOptions, ...baseOptions}
+        return Apollo.useMutation<UpdateComputerStoragePathMutation, UpdateComputerStoragePathMutationVariables>(UpdateComputerStoragePathDocument, options);
+      }
+export type UpdateComputerStoragePathMutationHookResult = ReturnType<typeof useUpdateComputerStoragePathMutation>;
+export type UpdateComputerStoragePathMutationResult = Apollo.MutationResult<UpdateComputerStoragePathMutation>;
+export type UpdateComputerStoragePathMutationOptions = Apollo.BaseMutationOptions<UpdateComputerStoragePathMutation, UpdateComputerStoragePathMutationVariables>;
 export const GetAllFilesAndFoldersOfUserDocument = gql`
     query getAllFilesAndFoldersOfUser {
   getAllFilesAndFoldersOfUser {
@@ -752,6 +802,14 @@ export type LoginMutationVariables = Exact<{
 
 
 export type LoginMutation = { login: string };
+
+export type UpdateComputerStoragePathMutationVariables = Exact<{
+  macAddress: Scalars['String'];
+  storagePath: Scalars['String'];
+}>;
+
+
+export type UpdateComputerStoragePathMutation = { updateComputerStoragePath: { ID: string, macAddress: string, storagePath: string } };
 
 export type GetAllFilesAndFoldersOfUserQueryVariables = Exact<{ [key: string]: never; }>;
 

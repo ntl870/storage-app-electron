@@ -1,0 +1,7 @@
+mutation updateComputerStoragePath($macAddress: String!, $storagePath: String!) {
+  updateComputerStoragePath(macAddress: $macAddress, storagePath: $storagePath) {
+    ID
+    macAddress
+    storagePath
+  }
+}

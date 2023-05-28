@@ -6,7 +6,7 @@ import vitePluginImp from 'vite-plugin-imp'
 import tsconfigPaths from 'vite-tsconfig-paths'
 
 export default defineConfig(({ mode }) => {
-  const env = loadEnv(mode)
+  loadEnv(mode)
 
   return {
     main: {

@@ -1,5 +1,5 @@
 import { currentStep } from '@renderer/components/ProtectedLayout'
-import { Button, Checkbox, Form, Input } from 'antd'
+import { Button, Form, Input, Typography } from 'antd'
 import { MutationLoginArgs, useLoginMutation } from '../../generated/schemas'
 import { useAlert } from '../../hooks/useAlert'
 import useRouter from '../../hooks/useRouter'
@@ -55,9 +55,14 @@ const Login = () => {
         >
           <Input.Password placeholder="Password" size="large" className="rounded-full" />
         </Form.Item>
-        <Form.Item name="remember" valuePropName="checked">
-          <Checkbox className="text-lg">Remember me</Checkbox>
-        </Form.Item>
+
+        <Typography.Text className="mb-4">
+          Don't have an account?{' '}
+          <Typography.Link href="http://storageapp.cloud/register" target="_blank">
+            Register
+          </Typography.Link>
+        </Typography.Text>
+
         <Form.Item>
           <Button
             type="primary"

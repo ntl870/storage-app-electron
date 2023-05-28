@@ -122,12 +122,12 @@ export const handleWriteToNewLocalChanges = (data, userID: string) => {
   writeFileSync(filePath, jsonData)
 }
 
-const clearNewLocalChanges = (userID: string) => {
-  const userDataPath = app.getPath('userData')
-  const dataDir = path.join(userDataPath, 'storageData')
-  const filePath = path.join(dataDir, `newLocalChanges-${userID}.json`)
-  unlinkSync(filePath)
-}
+// const clearNewLocalChanges = (userID: string) => {
+//   const userDataPath = app.getPath('userData')
+//   const dataDir = path.join(userDataPath, 'storageData')
+//   const filePath = path.join(dataDir, `newLocalChanges-${userID}.json`)
+//   unlinkSync(filePath)
+// }
 
 const isHadStorageData = (userID: string) => {
   const userDataPath = app.getPath('userData')
@@ -251,7 +251,11 @@ app.whenReady().then(async () => {
         storageData.files[updateIndex] = file
         handleWriteStorageDataToJSON(storageData, args.userID)
         try {
-          const { data } = await axios.get(`${process.env.MAIN_VITE_BASE_API}/files/${file.ID}`)
+          const { data } = await axios.get(`${process.env.MAIN_VITE_BASE_API}/files/${file.ID}`, {
+            headers: {
+              'Content-Type': 'multipart/form-data'
+            }
+          })
           // write this file
           const localPath = path.join(args.storagePath, removeFilePathPattern(file.url))
           const oldFilePath = path.join(
@@ -259,7 +263,12 @@ app.whenReady().then(async () => {
             removeFilePathPattern(storageData.files[updateIndex].url)
           )
           unlinkSync(oldFilePath)
-          writeFileSync(localPath, data)
+          try {
+            console.log(data)
+            writeFileSync(localPath, data, { encoding: 'binary' })
+          } catch (error) {
+            console.error('Error writing file:', error)
+          }
         } catch (err) {
           // console.log(err)
         }
@@ -325,7 +334,7 @@ app.whenReady().then(async () => {
             Authorization: `Bearer ${args.token}`
           }
         },
-        (error, response, body) => {
+        (_e, _, body) => {
           // write this folder
           const localPath = path.join(args.storagePath, removeFilePathPattern(folder.path))
           const oldFolderPath = path.join(
@@ -363,7 +372,7 @@ app.whenReady().then(async () => {
             Authorization: `Bearer ${args.token}`
           }
         },
-        (error, response, body) => {
+        (_e, _, body) => {
           // write this folder
           const localPath = path.join(args.storagePath, removeFilePathPattern(folder.path))
           mkdirSync(localPath, { recursive: true })
@@ -413,8 +422,8 @@ app.whenReady().then(async () => {
     event.reply('move-local-folders-reply')
   })
 
-  ipcMain.on('file-added', (_, args) => {
-    console.log(123123, args)
+  ipcMain.on('open-storage-folder', (_, args) => {
+    shell.showItemInFolder(args.path)
   })
 })
 

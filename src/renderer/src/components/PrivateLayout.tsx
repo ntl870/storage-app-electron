@@ -31,9 +31,9 @@ export const PrivateLayout = ({ children }: ProtectedLayoutProps) => {
         collapsedWidth="0"
         trigger={null}
         collapsed={collapsed}
-        // onBreakpoint={(broken) => {
-        //   setCollapsed(broken)
-        // }}
+        onBreakpoint={(broken) => {
+          setCollapsed(broken)
+        }}
       >
         <div className="flex items-center p-4">
           <img id="logo" src={logo} className="w-10 h-10 mr-1" />

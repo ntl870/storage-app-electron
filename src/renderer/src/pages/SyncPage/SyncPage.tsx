@@ -1,4 +1,4 @@
-import { LaptopOutlined } from '@ant-design/icons'
+import { LaptopOutlined, SyncOutlined } from '@ant-design/icons'
 import { useGetAllFilesAndFoldersOfUserLazyQuery } from '@renderer/generated/schemas'
 import useComputer from '@renderer/hooks/useComputer'
 import useCurrentUser from '@renderer/hooks/useCurrentUser'
@@ -241,9 +241,18 @@ export const SyncPage = () => {
         <Typography.Text className="font-bold">{`${convertBytesToGiB(storageUsed ?? 0).toFixed(
           2
         )} GB used of ${maxStorage} GB`}</Typography.Text>
+        <Button
+          onClick={() =>
+            window.electron.ipcRenderer.send('open-storage-folder', {
+              path: storagePath
+            })
+          }
+        >
+          Open folder
+        </Button>
       </div>
       <div>
-        {loading && Object.values(loadingState).some((item) => item) ? (
+        {loading || Object.values(loadingState).some((item) => item) ? (
           <div className="flex flex-row items-center">
             <Spin size="small" className="mr-2" />
             <Typography.Text className="text-slate-500">Syncing...</Typography.Text>
@@ -252,7 +261,12 @@ export const SyncPage = () => {
           <div className="flex flex-col">
             <Result status="success" title="Successfully Synced" />
             <div className="flex justify-center">
-              <Button className="w-48" onClick={() => handleSync(false)}>
+              <Button
+                className="w-48"
+                type="primary"
+                icon={<SyncOutlined />}
+                onClick={() => handleSync(false)}
+              >
                 Sync
               </Button>
             </div>
